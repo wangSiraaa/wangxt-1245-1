@@ -1,0 +1,116 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$railway-primary: (
+  50: #e3ebf4,
+  100: #b9cde2,
+  200: #8aabd0,
+  300: #5b89bd,
+  400: #376fae,
+  500: #1a365d,
+  600: #173155,
+  700: #12294a,
+  800: #0e2340,
+  900: #06182e,
+  A100: #6aa9ff,
+  A200: #3787ff,
+  A400: #0466ff,
+  A700: #0058e6,
+  contrast: (
+    50: #000, 100: #000, 200: #000, 300: #000,
+    400: #fff, 500: #fff, 600: #fff, 700: #fff,
+    800: #fff, 900: #fff, A100: #000, A200: #fff,
+    A400: #fff, A700: #fff,
+  )
+);
+
+$railway-accent: (
+  50: #fff3e8,
+  100: #ffdfc0,
+  200: #ffc995,
+  300: #ffb369,
+  400: #ffa247,
+  500: #dd6b20,
+  600: #cc601b,
+  700: #b75215,
+  800: #a24510,
+  900: #7f2d08,
+  A100: #ffffff,
+  A200: #ffe0cc,
+  A400: #ffb88a,
+  A700: #ffa46b,
+  contrast: (
+    50: #000, 100: #000, 200: #000, 300: #000,
+    400: #000, 500: #fff, 600: #fff, 700: #fff,
+    800: #fff, 900: #fff, A100: #000, A200: #000,
+    A400: #000, A700: #000,
+  )
+);
+
+$railway-warn: (
+  50: #ffe5e5,
+  100: #ffbdbd,
+  200: #ff9292,
+  300: #ff6666,
+  400: #ff4646,
+  500: #e53e3e,
+  600: #d43838,
+  700: #bf3030,
+  800: #ab2929,
+  900: #881c1c,
+  contrast: (50: #000, 100: #000, 200: #000, 300: #000, 400: #fff, 500: #fff, 600: #fff, 700: #fff, 800: #fff, 900: #fff)
+);
+
+$theme: mat.define-light-theme((
+  color: (
+    primary: mat.define-palette($railway-primary, 500),
+    accent: mat.define-palette($railway-accent, 500),
+    warn: mat.define-palette($railway-warn, 500),
+  ),
+  typography: mat.define-typography-config(
+    $font-family: '"Noto Sans SC", "Roboto", sans-serif',
+  ),
+  density: 0,
+));
+
+@include mat.all-component-themes($theme);
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Noto Sans SC', 'Roboto', sans-serif;
+  background-color: #f7fafc;
+  color: #2d3748;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.page-container {
+  padding: 24px;
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: #1a365d;
+  margin-bottom: 16px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &.draft { background: #e2e8f0; color: #4a5568; }
+  &.submitted { background: #bee3f8; color: #2b6cb0; }
+  &.inspecting { background: #fefcbf; color: #975a16; }
+  &.pending_approval { background: #feebc8; color: #c05621; }
+  &.approved { background: #c6f6d5; color: #276749; }
+  &.rejected { background: #fed7d7; color: #c53030; }
+  &.shipped { background: #9f7aea; color: #ffffff; }
+}

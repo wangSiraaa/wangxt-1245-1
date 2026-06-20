@@ -1,0 +1,17 @@
+{
+  "name": "railway-dangerous-goods-inspection",
+  "version": "1.0.0",
+  "private": true,
+  "description": "铁路危险货物装载检查系统",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start:dev --workspace=backend",
+    "dev:frontend": "npm run start --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build": "npm run build:backend && npm run build:frontend"
+  }
+}
