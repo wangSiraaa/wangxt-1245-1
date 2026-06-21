@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { DangerousGood } from '../../entities/dangerous-good.entity';
 
 @Injectable()
@@ -13,9 +13,9 @@ export class DangerousGoodsService {
     if (keyword) {
       return this.repo.find({
         where: [
-          { chineseName: ILike(`%${keyword}%`) },
-          { name: ILike(`%${keyword}%`) },
-          { unCode: ILike(`%${keyword}%`) },
+          { chineseName: Like(`%${keyword}%`) },
+          { name: Like(`%${keyword}%`) },
+          { unCode: Like(`%${keyword}%`) },
         ],
       });
     }

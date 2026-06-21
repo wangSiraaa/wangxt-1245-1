@@ -74,7 +74,7 @@ import {
 
         <mat-step [stepControl]="step2">
           <ng-template matStepLabel>车辆与照片核验</ng-template>
-          <mat-card>
+          <mat-card [formGroup]="step2">
             <h3 class="card-title">车辆清洗确认 & 照片核验</h3>
 
             <div class="check-block">
@@ -120,7 +120,7 @@ import {
             <h3 class="card-title">审核结论与备注</h3>
             <mat-form-field appearance="outline" class="full">
               <mat-label>检查备注</mat-label>
-              <textarea matInput rows="4" formControlName="remark" placeholder="填写整体检查说明、不合格项描述等"></textarea>
+              <textarea matInput rows="4" [formControl]="remarkCtrl" placeholder="填写整体检查说明、不合格项描述等"></textarea>
             </mat-form-field>
 
             <div class="result-row">

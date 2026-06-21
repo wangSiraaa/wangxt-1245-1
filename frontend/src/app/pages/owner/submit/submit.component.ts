@@ -124,8 +124,7 @@ export interface PhotoItem {
             </mat-form-field>
 
             <mat-form-field appearance="outline">
-              <mat-label>选择车辆</mat-icon>
-              </mat-label>
+              <mat-label>选择车辆</mat-label>
               <mat-select formControlName="vehicleId">
                 <mat-option *ngFor="let v of vehicles()" [value]="v.id">
                   <span class="vehicle-opt">

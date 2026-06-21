@@ -10,6 +10,7 @@ import { MatListModule } from '@angular/material/list';
 import {
   ApiService, ShipmentRecord, ShipmentStatus,
 } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 
 const STATUS_LABEL: Record<ShipmentStatus, string> = {
   draft: '草稿', submitted: '已提交', inspecting: '检查中',
