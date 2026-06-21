@@ -18,10 +18,13 @@ export type ShipmentStatus =
   | 'draft'
   | 'submitted'
   | 'inspecting'
+  | 'photo_pending'
   | 'pending_approval'
   | 'approved'
   | 'rejected'
   | 'shipped';
+
+export type PhotoStatus = 'complete' | 'pending_resubmit';
 
 @Entity('shipment_records')
 export class ShipmentRecord {
@@ -75,6 +78,25 @@ export class ShipmentRecord {
 
   @Column({ name: 'photos_verified', type: 'boolean', nullable: true })
   photosVerified: boolean | null;
+
+  @Column({ name: 'photo_status', type: 'varchar', length: 20, nullable: true })
+  photoStatus: PhotoStatus | null;
+
+  @Column({ name: 'photo_return_remark', type: 'text', nullable: true })
+  photoReturnRemark: string | null;
+
+  @Column({ name: 'photo_returned_at', type: 'timestamp', nullable: true })
+  photoReturnedAt: Date | null;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'photo_returned_by_id' })
+  photoReturnedBy: User | null;
+
+  @Column({ name: 'photo_returned_by_id', nullable: true })
+  photoReturnedById: string | null;
+
+  @Column({ name: 'photo_resubmitted_at', type: 'timestamp', nullable: true })
+  photoResubmittedAt: Date | null;
 
   @Column({ name: 'inspection_result', type: 'varchar', length: 10, nullable: true })
   inspectionResult: 'pass' | 'fail' | null;

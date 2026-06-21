@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ShipmentRecord, ShipmentStatus } from '../../entities/shipment-record.entity';
+import { ShipmentRecord, ShipmentStatus, PhotoStatus } from '../../entities/shipment-record.entity';
 import { ShipmentPhoto } from '../../entities/shipment-photo.entity';
 import { ShipmentInspectionItem } from '../../entities/shipment-inspection-item.entity';
 import { DangerousGood, PackingGroup } from '../../entities/dangerous-good.entity';
@@ -35,6 +35,15 @@ export interface InspectShipmentDto {
 
 export interface ApproveShipmentDto {
   approved: boolean;
+  remark?: string;
+}
+
+export interface ReturnForPhotoDto {
+  remark: string;
+}
+
+export interface ResubmitPhotosDto {
+  photoFileNames: { fileName: string; filePath: string; fileSize: number; mimeType: string }[];
   remark?: string;
 }
 
@@ -95,6 +104,7 @@ export class ShipmentsService {
       packingMatched,
       vehicleCleanConfirmed: vehicle.cleaned,
       photosVerified: false,
+      photoStatus: 'complete' as PhotoStatus,
       photos: dto.photoFileNames.map((p) =>
         this.photoRepo.create({
           id: uuid(),
@@ -183,11 +193,62 @@ export class ShipmentsService {
     return this.findOne(id);
   }
 
+  async returnForPhoto(id: string, dto: ReturnForPhotoDto, inspectorId: string) {
+    const record = await this.findOne(id);
+    if (!record) throw new NotFoundException('记录不存在');
+    if (!['submitted', 'inspecting', 'pending_approval'].includes(record.status)) {
+      throw new BadRequestException('当前状态不能退回补传照片');
+    }
+
+    record.status = 'photo_pending';
+    record.photoStatus = 'pending_resubmit' as PhotoStatus;
+    record.photoReturnRemark = dto.remark || null;
+    record.photoReturnedAt = new Date();
+    record.photoReturnedById = inspectorId;
+    record.photosVerified = false;
+    await this.repo.save(record);
+    return this.findOne(id);
+  }
+
+  async resubmitPhotos(id: string, dto: ResubmitPhotosDto, ownerId: string) {
+    const record = await this.findOne(id);
+    if (!record) throw new NotFoundException('记录不存在');
+    if (record.ownerId !== ownerId) throw new ForbiddenException('无权操作该记录');
+    if (record.status !== 'photo_pending') {
+      throw new BadRequestException('当前状态不能补传照片');
+    }
+    if (!dto.photoFileNames || dto.photoFileNames.length === 0) {
+      throw new BadRequestException('请至少补传一张装载照片');
+    }
+
+    const newPhotos = dto.photoFileNames.map((p) =>
+      this.photoRepo.create({
+        id: uuid(),
+        shipmentId: id,
+        fileName: p.fileName,
+        filePath: p.filePath,
+        fileSize: p.fileSize,
+        mimeType: p.mimeType,
+      }),
+    );
+    await this.photoRepo.save(newPhotos);
+
+    record.status = record.dangerousGood.isRestricted ? 'pending_approval' : 'submitted';
+    record.photoStatus = 'complete' as PhotoStatus;
+    record.photoResubmittedAt = new Date();
+    record.photosVerified = false;
+    await this.repo.save(record);
+    return this.findOne(id);
+  }
+
   async approve(id: string, dto: ApproveShipmentDto, supervisorId: string) {
     const record = await this.findOne(id);
     if (!record) throw new NotFoundException('记录不存在');
     if (record.status !== 'pending_approval') {
       throw new BadRequestException('当前状态不能审批');
+    }
+    if (record.photoStatus === 'pending_resubmit') {
+      throw new BadRequestException('装载照片待补传，补传完成前不能审批发运');
     }
 
     record.supervisorApproved = dto.approved;
@@ -249,6 +310,7 @@ export class ShipmentsService {
         'owner',
         'freightInspector',
         'supervisor',
+        'photoReturnedBy',
         'photos',
         'inspectionItemResults',
         'inspectionItemResults.inspectionItem',

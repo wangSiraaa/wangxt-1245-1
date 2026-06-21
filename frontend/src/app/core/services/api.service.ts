@@ -50,8 +50,10 @@ export interface ShipmentInspectionItemResult {
 }
 
 export type ShipmentStatus =
-  | 'draft' | 'submitted' | 'inspecting'
+  | 'draft' | 'submitted' | 'inspecting' | 'photo_pending'
   | 'pending_approval' | 'approved' | 'rejected' | 'shipped';
+
+export type PhotoStatus = 'complete' | 'pending_resubmit';
 
 export interface ShipmentRecord {
   id: string;
@@ -67,6 +69,11 @@ export interface ShipmentRecord {
   packingMatched: boolean | null;
   vehicleCleanConfirmed: boolean | null;
   photosVerified: boolean | null;
+  photoStatus: PhotoStatus | null;
+  photoReturnRemark: string | null;
+  photoReturnedAt: string | null;
+  photoResubmittedAt: string | null;
+  photoReturnedBy?: { name: string } | null;
   inspectionResult: 'pass' | 'fail' | null;
   inspectionRemark: string | null;
   supervisorApproved: boolean | null;
@@ -158,6 +165,14 @@ export class ApiService {
     remark?: string;
   }) {
     return firstValueFrom(this.http.post<ShipmentRecord>(`/api/shipments/${id}/inspect`, data));
+  }
+
+  returnForPhoto(id: string, remark: string) {
+    return firstValueFrom(this.http.post<ShipmentRecord>(`/api/shipments/${id}/return-photos`, { remark }));
+  }
+
+  resubmitPhotos(id: string, photoFileNames: { fileName: string; filePath: string; fileSize: number; mimeType: string }[]) {
+    return firstValueFrom(this.http.post<ShipmentRecord>(`/api/shipments/${id}/resubmit-photos`, { photoFileNames }));
   }
 
   approveShipment(id: string, data: { approved: boolean; remark?: string }) {

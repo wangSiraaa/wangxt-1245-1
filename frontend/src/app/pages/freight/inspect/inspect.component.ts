@@ -102,6 +102,21 @@ import {
                   </div>
                 }
               </div>
+
+              <div class="return-section">
+                <div class="rs-title">
+                  <mat-icon>photo_camera</mat-icon>照片缺失？退回货主补传
+                </div>
+                <mat-form-field appearance="outline" class="full">
+                  <mat-label>退回原因（将展示给货主）</mat-label>
+                  <textarea matInput rows="2" [formControl]="returnRemarkCtrl"
+                    placeholder="说明哪些装载照片缺失或不合规，需货主补传"></textarea>
+                </mat-form-field>
+                <button mat-raised-button color="warn" (click)="returnForPhoto()"
+                  [disabled]="returnRemarkCtrl.invalid || returning()">
+                  <mat-icon>undo</mat-icon>{{ returning() ? '提交中...' : '退回补传照片' }}
+                </button>
+              </div>
             </div>
 
             <div class="step-actions">
@@ -166,6 +181,15 @@ import {
     .photo-item img { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; display: block; }
     .photo-item small { color: #718096; }
     .full { width: 100%; margin-bottom: 16px; }
+    .return-section {
+      margin-top: 16px; padding: 16px; background: #fff5f5;
+      border: 1px solid #feb2b2; border-radius: 8px;
+    }
+    .rs-title {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 600; color: #c53030; margin-bottom: 10px;
+    }
+    .rs-title .mat-icon { font-size: 20px; }
     .result-row { display: flex; justify-content: flex-end; gap: 12px; }
     .step-actions { display: flex; justify-content: space-between; margin-top: 24px; }
     .empty { padding: 40px; text-align: center; color: #a0aec0; }
@@ -180,6 +204,7 @@ export class FreightInspectComponent implements OnInit {
 
   record = signal<ShipmentRecord | null>(null);
   inspectionItems = signal<InspectionItem[]>([]);
+  returning = signal(false);
 
   step1 = this.fb.group({ items: this.fb.array([]) });
   step2 = this.fb.group({
@@ -187,6 +212,7 @@ export class FreightInspectComponent implements OnInit {
     photosVerified: [false, Validators.requiredTrue],
   });
   remarkCtrl = this.fb.control('');
+  returnRemarkCtrl = this.fb.control('', Validators.required);
 
   async ngOnInit() {
     const id = this.route.snapshot.params['id'];
@@ -217,6 +243,20 @@ export class FreightInspectComponent implements OnInit {
       this.step2.controls.vehicleCleanConfirmed.setValue(true);
     } catch (e: any) {
       this.snack.open(e?.error?.message || '操作失败', '关闭', { duration: 2500 });
+    }
+  }
+
+  async returnForPhoto() {
+    if (this.returnRemarkCtrl.invalid || !this.record()) return;
+    this.returning.set(true);
+    try {
+      await this.api.returnForPhoto(this.record()!.id, this.returnRemarkCtrl.value!);
+      this.snack.open('已退回货主补传照片', '关闭', { duration: 2500 });
+      this.back();
+    } catch (e: any) {
+      this.snack.open(e?.error?.message || '退回失败', '关闭', { duration: 3000 });
+    } finally {
+      this.returning.set(false);
     }
   }
 

@@ -7,13 +7,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatListModule } from '@angular/material/list';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   ApiService, ShipmentRecord, ShipmentStatus,
 } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 
 const STATUS_LABEL: Record<ShipmentStatus, string> = {
-  draft: '草稿', submitted: '已提交', inspecting: '检查中',
+  draft: '草稿', submitted: '已提交', inspecting: '检查中', photo_pending: '待补传照片',
   pending_approval: '待监管审批', approved: '审核通过', rejected: '已驳回', shipped: '已发运',
 };
 
@@ -24,6 +25,15 @@ interface TimelineStep {
   done: boolean;
   current: boolean;
   desc?: string;
+}
+
+interface NewPhoto {
+  fileId: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  url: string;
 }
 
 const STEP_ORDER: ShipmentStatus[] = ['draft', 'submitted', 'inspecting', 'pending_approval', 'approved', 'shipped'];
@@ -38,7 +48,7 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
   imports: [
     CommonModule, DatePipe, RouterLink,
     MatCardModule, MatIconModule, MatButtonModule,
-    MatDividerModule, MatChipsModule, MatListModule,
+    MatDividerModule, MatChipsModule, MatListModule, MatSnackBarModule,
   ],
   template: `
     @if (record()) {
@@ -113,6 +123,33 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
                 <mat-icon class="ok small">check_circle</mat-icon>
               }
             </h3>
+
+            @if (record()!.photoStatus === 'pending_resubmit') {
+              <div class="photo-return-banner warn">
+                <mat-icon>warning</mat-icon>
+                <div class="prb-body">
+                  <div class="prb-title">该检查单因装载照片缺失已被退回，待货主补传照片</div>
+                  @if (record()!.photoReturnRemark) {
+                    <div class="prb-reason">退回原因：{{ record()!.photoReturnRemark }}</div>
+                  }
+                  <div class="prb-meta">
+                    退回人：{{ record()!.photoReturnedBy?.name || '-' }}
+                    · 退回时间：{{ record()!.photoReturnedAt | date:'yyyy-MM-dd HH:mm' }}
+                  </div>
+                </div>
+              </div>
+            } @else if (record()!.photoResubmittedAt) {
+              <div class="photo-return-banner done">
+                <mat-icon>check_circle</mat-icon>
+                <div class="prb-body">
+                  <div class="prb-title">货主已于 {{ record()!.photoResubmittedAt | date:'yyyy-MM-dd HH:mm' }} 补传照片，待货运员重新核验</div>
+                  @if (record()!.photoReturnRemark) {
+                    <div class="prb-reason">原退回原因：{{ record()!.photoReturnRemark }}</div>
+                  }
+                </div>
+              </div>
+            }
+
             @if (record()!.photos.length > 0) {
               <div class="photo-grid">
                 @for (p of record()!.photos; track p.id) {
@@ -121,6 +158,36 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
               </div>
             } @else {
               <div class="empty">暂无照片</div>
+            }
+
+            @if (isOwner() && record()!.status === 'photo_pending') {
+              <div class="resubmit-area">
+                <div class="resubmit-title"><mat-icon>add_a_photo</mat-icon>补传装载照片</div>
+                <input type="file" #resubmitInput multiple accept="image/*" (change)="onResubmitFile($event)" hidden>
+                <div class="resubmit-actions">
+                  <button mat-raised-button color="primary" (click)="resubmitInput.click()" [disabled]="uploading()">
+                    <mat-icon>cloud_upload</mat-icon>{{ uploading() ? '上传中...' : '选择补传照片' }}
+                  </button>
+                </div>
+                @if (newPhotos().length > 0) {
+                  <div class="photo-grid">
+                    @for (p of newPhotos(); track p.fileId) {
+                      <div class="photo-item">
+                        <img [src]="p.url" [alt]="p.fileName">
+                        <button mat-icon-button class="remove-btn" (click)="removeNewPhoto(p.fileId)">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                        <small class="photo-name">{{ p.fileName }}</small>
+                      </div>
+                    }
+                  </div>
+                  <div class="resubmit-actions">
+                    <button mat-raised-button color="accent" (click)="submitResubmit()" [disabled]="resubmitting()">
+                      <mat-icon>send</mat-icon>{{ resubmitting() ? '提交中...' : '提交补传照片' }}
+                    </button>
+                  </div>
+                }
+              </div>
             }
           </mat-card>
 
@@ -180,6 +247,7 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
                   <div class="tl-content">
                     <div class="tl-title">{{ s.title }}</div>
                     <div class="tl-time">{{ s.time || '-' }}</div>
+                    @if (s.desc) { <div class="tl-desc">{{ s.desc }}</div> }
                   </div>
                 </div>
               }
@@ -202,6 +270,9 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
               @if (record()!.freightInspector) {
                 <div class="p-row"><mat-icon>assignment_turned_in</mat-icon><div><label>货运员</label><span>{{ record()!.freightInspector.name }}</span></div></div>
               }
+              @if (record()!.photoReturnedBy) {
+                <div class="p-row"><mat-icon>photo_camera</mat-icon><div><label>照片退回人</label><span>{{ record()!.photoReturnedBy.name }}</span></div></div>
+              }
               @if (record()!.supervisor) {
                 <div class="p-row"><mat-icon>how_to_reg</mat-icon><div><label>监管员</label><span>{{ record()!.supervisor.name }}</span></div></div>
               }
@@ -213,6 +284,8 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
             <div class="time-list">
               <div class="t-row"><label>创建</label><span>{{ record()!.createdAt }}</span></div>
               @if (record()!.submittedAt) { <div class="t-row"><label>提交</label><span>{{ record()!.submittedAt }}</span></div> }
+              @if (record()!.photoReturnedAt) { <div class="t-row"><label>照片退回</label><span>{{ record()!.photoReturnedAt }}</span></div> }
+              @if (record()!.photoResubmittedAt) { <div class="t-row"><label>照片补传</label><span>{{ record()!.photoResubmittedAt }}</span></div> }
               @if (record()!.inspectedAt) { <div class="t-row"><label>检查</label><span>{{ record()!.inspectedAt }}</span></div> }
               @if (record()!.approvedAt) { <div class="t-row"><label>审批</label><span>{{ record()!.approvedAt }}</span></div> }
               @if (record()!.shippedAt) { <div class="t-row"><label>发运</label><span>{{ record()!.shippedAt }}</span></div> }
@@ -246,6 +319,30 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
     .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
     .photo { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; }
     .empty { padding: 30px; text-align: center; color: #a0aec0; }
+    .photo-return-banner {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 14px 16px; border-radius: 8px; margin-bottom: 14px;
+      border: 1px solid;
+    }
+    .photo-return-banner.warn { background: #fff5f5; border-color: #feb2b2; }
+    .photo-return-banner.warn .mat-icon { color: #e53e3e; }
+    .photo-return-banner.done { background: #f0fff4; border-color: #9ae6b4; }
+    .photo-return-banner.done .mat-icon { color: #38a169; }
+    .photo-return-banner .mat-icon { font-size: 22px; width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px; }
+    .prb-title { font-weight: 600; color: #2d3748; font-size: 14px; }
+    .prb-reason { margin-top: 6px; font-size: 13px; color: #c53030; }
+    .prb-meta { margin-top: 6px; font-size: 12px; color: #718096; }
+    .resubmit-area {
+      margin-top: 16px; padding: 16px; background: #ebf8ff;
+      border: 1px dashed #90cdf4; border-radius: 8px;
+    }
+    .resubmit-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #2b6cb0; margin-bottom: 12px; }
+    .resubmit-title .mat-icon { font-size: 20px; }
+    .resubmit-actions { display: flex; gap: 12px; margin: 12px 0; }
+    .photo-item { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .photo-item img { width: 100%; height: 120px; object-fit: cover; display: block; }
+    .remove-btn { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: #fff; }
+    .photo-name { display: block; padding: 4px 8px; font-size: 12px; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .check-list { display: flex; flex-direction: column; gap: 10px; }
     .check-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px; background: #f7fafc; border-radius: 6px; }
     .check-row .mat-icon { font-size: 20px; width: 20px; height: 20px; flex-shrink: 0; }
@@ -274,6 +371,7 @@ const STEP_TITLES: Record<ShipmentStatus, string> = {
     .tl-item.rejected .tl-dot { background: #e53e3e; color: #fff; }
     .tl-title { font-weight: 600; color: #2d3748; }
     .tl-time { font-size: 12px; color: #718096; margin-top: 2px; }
+    .tl-desc { font-size: 12px; color: #c05621; margin-top: 4px; }
     .people-list, .time-list { display: flex; flex-direction: column; gap: 12px; }
     .p-row { display: flex; gap: 12px; align-items: center; }
     .p-row .mat-icon { color: #1a365d; }
@@ -292,19 +390,27 @@ export class ShipmentDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private snack = inject(MatSnackBar);
 
   record = signal<ShipmentRecord | null>(null);
   timeline = signal<TimelineStep[]>([]);
+  isOwner = signal(false);
+  newPhotos = signal<NewPhoto[]>([]);
+  uploading = signal(false);
+  resubmitting = signal(false);
 
   async ngOnInit() {
     const id = this.route.snapshot.params['id'];
+    this.isOwner.set(this.auth.user()?.role === 'owner');
     const r = await this.api.getShipment(id);
     this.record.set(r);
     this.buildTimeline(r);
   }
 
   private buildTimeline(r: ShipmentRecord) {
-    const currentIdx = STEP_ORDER.indexOf(r.status);
+    const isPhotoPending = r.status === 'photo_pending';
+    let currentIdx = STEP_ORDER.indexOf(r.status);
+    if (currentIdx === -1) currentIdx = STEP_ORDER.indexOf('submitted');
     const steps: TimelineStep[] = STEP_ORDER
       .filter(s => s !== 'rejected')
       .map((key, idx) => {
@@ -315,13 +421,60 @@ export class ShipmentDetailComponent implements OnInit {
         else if (key === 'pending_approval') time = r.submittedAt;
         else if (key === 'approved') time = r.approvedAt || r.inspectedAt;
         else if (key === 'shipped') time = r.shippedAt;
-        return {
-          key, title: STEP_TITLES[key], time,
-          done: currentIdx >= idx && r.status !== 'rejected' ? true : (currentIdx > idx),
-          current: idx === currentIdx && r.status !== 'rejected',
-        };
+        const done = isPhotoPending
+          ? (key === 'draft'
+            || (key === 'submitted' && !!r.submittedAt)
+            || (key === 'inspecting' && !!r.inspectedAt)
+            || (key === 'pending_approval' && !!r.inspectedAt))
+          : (currentIdx >= idx && r.status !== 'rejected' ? true : (currentIdx > idx));
+        const current = isPhotoPending ? false : (idx === currentIdx && r.status !== 'rejected');
+        const desc = isPhotoPending && key === 'submitted' ? '检查单已退回货主补传照片' : undefined;
+        return { key, title: STEP_TITLES[key], time, done, current, desc };
       });
     this.timeline.set(steps);
+  }
+
+  async onResubmitFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = Array.from(input.files || []).filter(f => f.type.startsWith('image/'));
+    input.value = '';
+    if (files.length === 0) return;
+    this.uploading.set(true);
+    try {
+      for (const f of files) {
+        const res = await this.api.uploadPhoto(f);
+        this.newPhotos.update(ps => [...ps, {
+          fileId: res.fileId, fileName: res.fileName, url: res.url,
+          filePath: res.url, fileSize: res.size, mimeType: f.type,
+        }]);
+      }
+    } catch {
+      this.snack.open('部分照片上传失败', '关闭', { duration: 2500 });
+    } finally {
+      this.uploading.set(false);
+    }
+  }
+
+  removeNewPhoto(fileId: string) {
+    this.newPhotos.update(ps => ps.filter(p => p.fileId !== fileId));
+  }
+
+  async submitResubmit() {
+    if (!this.record() || this.newPhotos().length === 0) return;
+    this.resubmitting.set(true);
+    try {
+      const r = await this.api.resubmitPhotos(this.record()!.id, this.newPhotos().map(p => ({
+        fileName: p.fileName, filePath: p.filePath, fileSize: p.fileSize, mimeType: p.mimeType,
+      })));
+      this.record.set(r);
+      this.buildTimeline(r);
+      this.newPhotos.set([]);
+      this.snack.open('照片已补传，等待货运员重新核验', '关闭', { duration: 3000 });
+    } catch (e: any) {
+      this.snack.open(e?.error?.message || '补传失败，请重试', '关闭', { duration: 3000 });
+    } finally {
+      this.resubmitting.set(false);
+    }
   }
 
   back() {

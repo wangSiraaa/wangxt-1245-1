@@ -139,7 +139,7 @@ export class SupervisorApproveComponent implements OnInit {
 
   async load() {
     const all = await this.api.getShipments();
-    this.data.set(all.filter(r => r.status === 'pending_approval'));
+    this.data.set(all.filter(r => r.status === 'pending_approval' && r.photoStatus !== 'pending_resubmit'));
   }
 
   openDialog(record: ShipmentRecord, approved: boolean) {

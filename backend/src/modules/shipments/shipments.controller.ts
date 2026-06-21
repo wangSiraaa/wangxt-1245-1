@@ -13,6 +13,8 @@ import {
   CreateShipmentDto,
   InspectShipmentDto,
   ApproveShipmentDto,
+  ReturnForPhotoDto,
+  ResubmitPhotosDto,
 } from './shipments.service';
 import { Roles } from '../../common/roles.decorator';
 import { ShipmentStatus } from '../../entities/shipment-record.entity';
@@ -73,6 +75,26 @@ export class ShipmentsController {
     @Req() req: RequestWithUser,
   ) {
     return this.service.inspect(id, dto, req.user.sub);
+  }
+
+  @Post(':id/return-photos')
+  @Roles('freight')
+  returnForPhoto(
+    @Param('id') id: string,
+    @Body() dto: ReturnForPhotoDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.service.returnForPhoto(id, dto, req.user.sub);
+  }
+
+  @Post(':id/resubmit-photos')
+  @Roles('owner')
+  resubmitPhotos(
+    @Param('id') id: string,
+    @Body() dto: ResubmitPhotosDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.service.resubmitPhotos(id, dto, req.user.sub);
   }
 
   @Post(':id/approve')

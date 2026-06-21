@@ -15,7 +15,7 @@ import {
 } from '../../../core/services/api.service';
 
 const STATUS_LABEL: Record<ShipmentStatus, string> = {
-  draft: '草稿', submitted: '待检查', inspecting: '检查中',
+  draft: '草稿', submitted: '待检查', inspecting: '检查中', photo_pending: '待补传照片',
   pending_approval: '待监管审批', approved: '审核通过', rejected: '已驳回', shipped: '已发运',
 };
 
@@ -43,6 +43,7 @@ const STATUS_LABEL: Record<ShipmentStatus, string> = {
           <mat-select [(ngModel)]="filterStatus" (selectionChange)="load()">
             <mat-option value="">全部</mat-option>
             <mat-option value="submitted">待检查</mat-option>
+            <mat-option value="photo_pending">待补传照片</mat-option>
             <mat-option value="approved">审核通过</mat-option>
             <mat-option value="shipped">已发运</mat-option>
             <mat-option value="rejected">已驳回</mat-option>

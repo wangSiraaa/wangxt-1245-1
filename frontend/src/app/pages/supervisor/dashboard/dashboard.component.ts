@@ -9,7 +9,7 @@ import {
 } from '../../../core/services/api.service';
 
 const STATUS_LABEL: Record<ShipmentStatus, string> = {
-  draft: '草稿', submitted: '已提交', inspecting: '检查中',
+  draft: '草稿', submitted: '已提交', inspecting: '检查中', photo_pending: '待补传照片',
   pending_approval: '待审批', approved: '审核通过', rejected: '已驳回', shipped: '已发运',
 };
 
@@ -111,6 +111,7 @@ const STATUS_LABEL: Record<ShipmentStatus, string> = {
     .bar-fill.status-shipped { background: #805ad5; }
     .bar-fill.status-pending_approval { background: #dd6b20; }
     .bar-fill.status-rejected { background: #e53e3e; }
+    .bar-fill.status-photo_pending { background: #ed8936; }
     .bar-fill.status-draft, .bar-fill.status-inspecting { background: #a0aec0; }
     .bar-count { width: 40px; font-weight: 600; color: #1a365d; text-align: right; }
     .quick-links { display: flex; flex-direction: column; gap: 12px; }

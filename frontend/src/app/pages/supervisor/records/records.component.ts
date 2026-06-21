@@ -14,7 +14,7 @@ import {
 } from '../../../core/services/api.service';
 
 const STATUS_LABEL: Record<ShipmentStatus, string> = {
-  draft: '草稿', submitted: '已提交', inspecting: '检查中',
+  draft: '草稿', submitted: '已提交', inspecting: '检查中', photo_pending: '待补传照片',
   pending_approval: '待审批', approved: '审核通过', rejected: '已驳回', shipped: '已发运',
 };
 
